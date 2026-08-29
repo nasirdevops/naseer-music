@@ -15,8 +15,21 @@ import {
 } from "@/components/ui/input-otp";
 
 import { useAuth } from "@/hooks/use-auth";
-import logo from "@/assets/logo.svg";
 import { ArrowRight, Loader2, Mail, UserX } from "lucide-react";
+
+function GuitarIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="32" cy="44" rx="14" ry="16" fill="currentColor" opacity="0.15" />
+      <ellipse cx="32" cy="44" rx="10" ry="12" stroke="currentColor" strokeWidth="2" fill="none" />
+      <path d="M32 32V8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M32 8L26 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M32 8L38 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="32" cy="44" r="2.5" fill="currentColor" opacity="0.4" />
+      <path d="M32 4V2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -121,14 +134,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             <>
               <CardHeader className="text-center">
               <div className="flex justify-center">
-                    <img
-                      src={logo}
-                      alt="Lock Icon"
-                      width={64}
-                      height={64}
-                      className="rounded-lg mb-4 mt-4 cursor-pointer"
-                      onClick={() => navigate("/")}
-                    />
+                    <div className="mb-4 mt-4 cursor-pointer flex items-center gap-2" onClick={() => navigate("/")}>
+                      <GuitarIcon className="h-14 w-14 text-primary" />
+                      <span className="text-2xl font-bold tracking-tight">SONA <span className="text-primary">Music</span></span>
+                    </div>
                   </div>
                 <CardTitle className="text-xl">Get Started</CardTitle>
                 <CardDescription>

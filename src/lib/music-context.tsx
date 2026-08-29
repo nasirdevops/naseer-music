@@ -165,9 +165,25 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     if (!audioRef.current) {
       const audio = new Audio();
       audio.volume = 0.8;
+      audio.preload = "auto";
+      // playsinline prevents iOS from taking over fullscreen
+      audio.setAttribute("playsinline", "");
+      audio.setAttribute("webkit-playsinline", "");
       audioRef.current = audio;
     }
     return audioRef.current;
+  }, []);
+
+  // Keep audio playing when page is hidden (background playback)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && currentModeRef.current === "audio" && audioRef.current) {
+        // Prevent browser from pausing on visibility change
+        audioRef.current.play().catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
   // Initialize hidden YouTube player container on mount
@@ -273,8 +289,14 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       const audio = getAudio();
       audio.src = track.preview;
       audio.volume = volume;
+      audio.load();
       audio.play().catch(() => {});
       setIsPlaying(true);
+
+      // Update Media Session playback state
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.playbackState = "playing";
+      }
 
       audio.onended = () => {
         setQueueIndex((prev) => {

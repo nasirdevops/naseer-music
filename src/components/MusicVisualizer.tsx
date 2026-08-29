@@ -1,7 +1,22 @@
 import { useEffect, useState, useMemo } from "react";
 import { useMusic } from "@/lib/music-context";
 
-const MUSIC_SYMBOLS = ["♪", "♫", "♬", "♩", "🎵", "🎶", "🎸", "🎹", "🥁", "🎷", "🎺", "🎻"];
+// Music symbols from alt-codes.net/music_note_alt_codes.php
+const MUSIC_SYMBOLS = [
+  // Music notes
+  "♪", "♫", "♬", "♩",
+  // Music emojis
+  "🎵", "🎶", "🎼", "🎹", "🎻", "🎷", "🎸", "🎺", "🥁", "🎤", "🎧", "🎙",
+  // Unicode music symbols
+  "𝄞", "𝄢", "𝄡", // Clefs
+  "♭", "♮", "♯", // Accidentals
+  "𝄆", "𝄇", // Repeat signs
+  "𝄄", "𝄅", // Barlines
+  "𝄐", // Fermata
+  "𝄜", // Six-string Fretboard
+  "𝄝", // Four-string Fretboard
+  "𝄗", "𝄘", "〞", "𝄚", "𝄛", // Staffs
+];
 
 interface Particle {
   id: number;
@@ -40,12 +55,12 @@ export function MusicVisualizer() {
 
   const particles: Particle[] = useMemo(() => {
     if (!isPlaying || !currentTrack) return [];
-    return Array.from({ length: 18 }, (_, i) => ({
+    return Array.from({ length: 28 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: 60 + Math.random() * 40,
-      size: 16 + Math.random() * 24,
-      symbol: MUSIC_SYMBOLS[i % MUSIC_SYMBOLS.length],
+      size: 14 + Math.random() * 30,
+      symbol: MUSIC_SYMBOLS[Math.floor(Math.random() * MUSIC_SYMBOLS.length)],
       color: COLORS[i % COLORS.length],
       duration: 4 + Math.random() * 6,
       delay: Math.random() * 4,
@@ -56,7 +71,7 @@ export function MusicVisualizer() {
 
   const crackers: Cracker[] = useMemo(() => {
     if (!isPlaying || !currentTrack) return [];
-    return Array.from({ length: 6 }, (_, i) => ({
+    return Array.from({ length: 8 }, (_, i) => ({
       id: i,
       x: 10 + Math.random() * 80,
       y: 5 + Math.random() * 30,

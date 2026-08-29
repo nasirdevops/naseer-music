@@ -43,6 +43,7 @@ interface YTPlayer {
   loadVideoById: (id: string) => void;
   playVideo: () => void;
   pauseVideo: () => void;
+  stopVideo: () => void;
   seekTo: (seconds: number, allowSeekAhead: boolean) => void;
   setVolume: (volume: number) => void;
   getVolume: () => number;
@@ -67,6 +68,7 @@ interface MusicContextType {
   prevTrack: () => void;
   seekTo: (time: number) => void;
   setVolume: (vol: number) => void;
+  stopPlayback: () => void;
 }
 
 const MusicContext = createContext<MusicContextType | null>(null);
@@ -441,6 +443,26 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const stopPlayback = useCallback(() => {
+    // Stop YouTube
+    if (ytPlayer && ytReady) {
+      try {
+        ytPlayer.stopVideo();
+      } catch { /* ignore */ }
+    }
+    // Stop HTML5 audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setCurrentTrack(null);
+    setIsPlaying(false);
+    setProgress(0);
+    setDuration(0);
+    setQueue([]);
+    setQueueIndex(0);
+  }, []);
+
   return (
     <MusicContext.Provider
       value={{
@@ -458,6 +480,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         prevTrack,
         seekTo,
         setVolume,
+        stopPlayback,
       }}
     >
       {children}

@@ -10,7 +10,33 @@ import {
   Shield,
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import logo from "@/assets/logo.svg";
+
+function GuitarIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="32" cy="44" rx="14" ry="16" fill="currentColor" opacity="0.2" />
+      <ellipse cx="32" cy="44" rx="10" ry="12" stroke="currentColor" strokeWidth="2" fill="none" />
+      <path d="M32 32V8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M32 8L26 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M32 8L38 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="32" cy="44" r="2.5" fill="currentColor" opacity="0.4" />
+      <line x1="29" y1="44" x2="29" y2="44" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.3" />
+      <line x1="35" y1="44" x2="35" y2="44" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.3" />
+      <path d="M32 4V2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function HeadphoneIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 36V32C12 20.954 20.954 12 32 12C43.046 12 52 20.954 52 32V36" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" />
+      <rect x="8" y="34" width="8" height="14" rx="4" fill="currentColor" opacity="0.3" stroke="currentColor" strokeWidth="2" />
+      <rect x="48" y="34" width="8" height="14" rx="4" fill="currentColor" opacity="0.3" stroke="currentColor" strokeWidth="2" />
+      <circle cx="32" cy="12" r="2" fill="currentColor" opacity="0.5" />
+    </svg>
+  );
+}
 
 const genres = [
   { name: "Pop", color: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" },
@@ -55,7 +81,10 @@ export default function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="SONA Music" className="h-8 w-8" />
+            <div className="flex items-center gap-1">
+              <GuitarIcon className="h-7 w-7 text-primary" />
+              <HeadphoneIcon className="h-5 w-5 text-primary/60 -ml-1" />
+            </div>
             <span className="text-lg font-bold tracking-tight">
               SONA <span className="text-primary">Music</span>
             </span>
@@ -288,7 +317,7 @@ export default function Landing() {
       <footer className="border-t border-border/40 py-8 px-6">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="" className="h-5 w-5" />
+            <GuitarIcon className="h-5 w-5 text-primary" />
             <span className="font-semibold text-foreground">SONA Music</span>
           </div>
           <p>Free & ad-free music streaming. Built with ❤️</p>

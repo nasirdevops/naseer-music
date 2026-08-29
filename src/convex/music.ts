@@ -469,44 +469,91 @@ export const getPlaylistTracks = action({
 export const searchSaavnAlbums = action({
   args: { query: v.string(), limit: v.optional(v.number()) },
   handler: async (_ctx, { query, limit }) => {
-    const max = limit ?? 20;
-    const q = query.trim();
+    const max = limit ?? 40;
+    const q = query.trim().toLowerCase();
 
-    try {
-      const params = new URLSearchParams({
-        __call: "autocomplete.get",
-        _format: "json",
-        _marker: "0",
-        cc: "in",
-        includeMetaTags: "1",
-        query: q,
-      });
+    // Build multiple search queries to get more album variety
+    const queries: string[] = [q];
+    const popularMovies: Record<string, string[]> = {
+      telugu: ["Pushpa", "RRR", "Baahubali", "Pokiri", "Magadheera", "Eega", "Temper", "Julayi", "Ala Vaikunthapurramuloo", "Arjun Reddy", "Geetha Govindam", "Mahanati", "Bhadra", "Happy", "Gabbar Singh", "Attarintiki Daredi", "Sarrainodu", "DJ Tillu", "Hi Nanna", "Devara"],
+      hindi: ["Animal", "Pathaan", "Jawan", "Brahmastra", "Kabir Singh", "War", "Tiger", "Dangal", "Baahubali Hindi", "KGF Hindi", "Pushpa Hindi", "Rocky Rani", "Tu Jhoothi Main Makkaar", "Gadar", "URI"],
+      tamil: ["Ponniyin Selvan", "Vikram", "Beast", "Valimai", "Master", "Bigil", "Sarkar", "Kaithi", "Kabali", "Leo", "Jailer", "Ponniyin Selvan 2", "Varisu", "Thunivu"],
+      kannada: ["KGF", "KGF Chapter 2", "Kantara", "777 Charlie", "James", "Roberrt", "Yuvarathnaa", "Vikrant Rona", "777 Charlie", "Garuda Gamana Rishabha Vahana"],
+      punjabi: ["Carry On Jatta", "Maula Jatt", "Chal Mera Putt", "Qismat", "Saunkan Saunkne", "Long Da Lishkara", "Ardaas", "Nikka Zaildar", "Jatt & Juliet"],
+      malayalam: ["Lucifer", "Manjummel Boys", "Aavesham", "Bramayugam", "Aadujeevitham", "Premalu", "Kaathal", "Nanpakal Nerathu Mayakkam"],
+    };
 
-      const res = await fetch(`${SAAVN_BASE}?${params}`, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-      });
-
-      if (!res.ok) return [];
-      const text = await res.text();
-      const data = JSON.parse(text);
-      const albums = data?.albums?.data ?? [];
-
-      return albums.slice(0, max).map((a: Record<string, unknown>) => ({
-        id: a.id,
-        title: cleanString((a.title as string) ?? ""),
-        image: ((a.image as string) ?? "").replace("50x50", "500x500").replace("http://", "https://"),
-        language: (a.more_info as Record<string, unknown>)?.language as string ?? "",
-        artist: cleanString(
-          (a.description as string)?.split(" \u00b7 ")?.[0] ?? ""
-        ),
-      }));
-    } catch (e) {
-      console.warn("Album search failed:", e);
-      return [];
+    // Detect language
+    let detectedLang = "";
+    for (const lang of Object.keys(popularMovies)) {
+      if (q.includes(lang)) { detectedLang = lang; break; }
     }
+
+    if (detectedLang && popularMovies[detectedLang]) {
+      // Add popular movie names for that language
+      queries.push(...popularMovies[detectedLang].slice(0, 8));
+    } else {
+      // Generic: add "songs" and "albums" variants
+      queries.push(`${q} songs`, `${q} album`, `${q} hits`);
+    }
+
+    // Search all queries in parallel
+    const fetchAlbums = async (searchQuery: string): Promise<Record<string, unknown>[]> => {
+      try {
+        const params = new URLSearchParams({
+          __call: "autocomplete.get",
+          _format: "json",
+          _marker: "0",
+          cc: "in",
+          includeMetaTags: "1",
+          query: searchQuery,
+        });
+        const res = await fetch(`${SAAVN_BASE}?${params}`, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!res.ok) return [];
+        const text = await res.text();
+        const data = JSON.parse(text);
+        return data?.albums?.data ?? [];
+      } catch {
+        return [];
+      }
+    };
+
+    const allResults = await Promise.allSettled(queries.map(fetchAlbums));
+
+    // Merge and deduplicate albums
+    const seen = new Set<string>();
+    const albums: { id: string; title: string; image: string; language: string; artist: string }[] = [];
+
+    for (const result of allResults) {
+      if (result.status !== "fulfilled") continue;
+      for (const a of result.value) {
+        const id = String(a.id ?? "");
+        const title = cleanString((a.title as string) ?? "");
+        if (!id || !title || seen.has(id)) continue;
+        seen.add(id);
+        albums.push({
+          id,
+          title,
+          image: ((a.image as string) ?? "")
+            .replace("50x50", "500x500")
+            .replace("150x150", "500x500")
+            .replace("http://", "https://"),
+          language: ((a.more_info as Record<string, unknown>)?.language as string) ?? detectedLang,
+          artist: cleanString(
+            (a.description as string)?.split(" \u00b7 ")?.[0] ?? ""
+          ),
+        });
+        if (albums.length >= max) break;
+      }
+      if (albums.length >= max) break;
+    }
+
+    return albums;
   },
 });
 

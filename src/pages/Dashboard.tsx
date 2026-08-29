@@ -310,7 +310,7 @@ export default function Dashboard() {
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden relative z-10">
         {/* Top bar */}
-        <header className="flex items-center gap-4 px-6 py-4 border-b border-border/40 bg-background/60 backdrop-blur-xl">
+        <header className="flex items-center gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 border-b border-border/40 bg-background/60 backdrop-blur-xl">
           {/* Sidebar toggle */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -322,7 +322,7 @@ export default function Dashboard() {
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
             )}
           </button>
-          <div className="flex lg:hidden items-center gap-2">
+          <div className="flex lg:hidden items-center gap-1 sm:gap-2">
             {(
               [
                 { id: "home" as View, icon: Home },
@@ -337,30 +337,30 @@ export default function Dashboard() {
                   setSelectedAlbum(null);
                 }}
                 className={cn(
-                  "h-9 w-9 flex items-center justify-center rounded-lg transition-colors",
+                  "h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-lg transition-colors",
                   view === item.id
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground"
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             ))}
           </div>
 
           {view === "search" && (
-            <div className="relative flex-1 max-w-xl">
+            <div className="relative flex-1 max-w-xl min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search Telugu, Hindi, Tamil, Kannada albums & songs..."
+                placeholder="Search songs, albums..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   setSelectedAlbum(null);
                   setAlbumSongs([]);
                 }}
-                className="w-full h-10 pl-10 pr-10 rounded-full bg-white/5 border border-border/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full h-9 sm:h-10 pl-9 pr-9 rounded-full bg-white/5 border border-border/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               {searchQuery && (
                 <button
@@ -394,16 +394,16 @@ export default function Dashboard() {
           )}
 
           {/* Background upload + User profile — top right */}
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
             <input ref={bgInputRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
             <button
               onClick={() => bgImage ? removeBg() : bgInputRef.current?.click()}
-              className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+              className="h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
               title={bgImage ? "Remove background photo" : "Upload background photo"}
             >
               {bgImage ? <Trash2 className="h-4 w-4" /> : <ImagePlus className="h-4 w-4" />}
             </button>
-            <div className="text-right hidden sm:block">
+            <div className="text-right hidden md:block">
               <p className="text-sm font-semibold truncate max-w-[140px]">
                 {user?.name ?? user?.email?.split("@")[0] ?? "Guest"}
               </p>
@@ -411,12 +411,12 @@ export default function Dashboard() {
                 {user?.email ?? ""}
               </p>
             </div>
-            <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
               {(user?.name ?? user?.email ?? "G").charAt(0).toUpperCase()}
             </div>
             <button
               onClick={handleSignOut}
-              className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+              className="h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
               title="Sign out"
             >
               <LogOut className="h-4 w-4" />
@@ -425,7 +425,7 @@ export default function Dashboard() {
         </header>
 
         {/* Content */}
-        <div className={cn("flex-1 overflow-y-auto p-6 pb-28", bgImage && "")}>
+        <div className={cn("flex-1 overflow-y-auto p-4 sm:p-6 pb-28", bgImage && "")}>
           <AnimatePresence mode="wait">
             {/* HOME */}
             {view === "home" && (
@@ -602,8 +602,8 @@ export default function Dashboard() {
                       <ChevronLeft className="h-4 w-4" />
                       Back to albums
                     </button>
-                    <div className="flex items-end gap-5">
-                      <div className="h-40 w-40 shrink-0 rounded-xl overflow-hidden shadow-2xl bg-muted">
+                    <div className="flex items-end gap-3 sm:gap-5">
+                      <div className="h-28 w-28 sm:h-40 sm:w-40 shrink-0 rounded-xl overflow-hidden shadow-2xl bg-muted">
                         {selectedAlbum.image ? (
                           <img src={selectedAlbum.image} alt={selectedAlbum.title} className="h-full w-full object-cover" />
                         ) : (
@@ -614,7 +614,7 @@ export default function Dashboard() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1">Album</p>
-                        <h2 className="text-3xl font-bold truncate">{selectedAlbum.title}</h2>
+                        <h2 className="text-xl sm:text-3xl font-bold truncate">{selectedAlbum.title}</h2>
                         <p className="text-sm text-muted-foreground mt-1">{selectedAlbum.artist || selectedAlbum.language}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{albumSongs.length} songs</p>
                       </div>

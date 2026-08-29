@@ -20,6 +20,7 @@ import { useNavigate } from "react-router";
 import { useMusic, type Track } from "@/lib/music-context";
 import { TrackRow } from "@/components/music/TrackRow";
 import { NowPlayingBar } from "@/components/music/NowPlayingBar";
+import { MusicVisualizer } from "@/components/MusicVisualizer";
 import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
@@ -781,6 +782,7 @@ export default function Dashboard() {
         </div>
       </main>
 
+      <MusicVisualizer />
       <NowPlayingBar />
     </div>
   );

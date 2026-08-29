@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Home,
   Search,
@@ -12,6 +12,8 @@ import {
   Loader2,
   ChevronLeft,
   Disc3,
+  ImagePlus,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
@@ -83,6 +85,12 @@ export default function Dashboard() {
   // Logo toggle
   const [brandName, setBrandName] = useState<"SONA" | "NAYA">("SONA");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Background photo
+  const [bgImage, setBgImage] = useState<string | null>(() => {
+    try { return localStorage.getItem("sona_bg_image"); } catch { return null; }
+  });
+  const bgInputRef = useRef<HTMLInputElement>(null);
 
   // Album search
   const [albumResults, setAlbumResults] = useState<SaavnAlbum[]>([]);
@@ -185,6 +193,23 @@ export default function Dashboard() {
     [getSaavnAlbumSongs]
   );
 
+  const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setBgImage(dataUrl);
+      try { localStorage.setItem("sona_bg_image", dataUrl); } catch { /* quota */ }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeBg = () => {
+    setBgImage(null);
+    try { localStorage.removeItem("sona_bg_image"); } catch { /* ignore */ }
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
@@ -201,8 +226,15 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden relative">
+      {/* Custom background image */}
+      {bgImage && (
+        <div className="fixed inset-0 z-0">
+          <img src={bgImage} alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-black/60" />
+        </div>
+      )}
       {/* Sidebar */}
-      <aside className={cn("hidden lg:flex w-64 shrink-0 flex-col border-r border-border/60 bg-background transition-all duration-300", !sidebarOpen && "w-0 overflow-hidden border-0")}>
+      <aside className={cn("hidden lg:flex w-64 shrink-0 flex-col border-r border-border/60 bg-background/80 backdrop-blur-xl transition-all duration-300 relative z-10", !sidebarOpen && "w-0 overflow-hidden border-0")}>
         {/* Logo — toggles SONA ↔ Naya */}
         <div
           className="p-5 flex items-center gap-2 cursor-pointer select-none"
@@ -275,9 +307,9 @@ export default function Dashboard() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden relative z-10">
         {/* Top bar */}
-        <header className="flex items-center gap-4 px-6 py-4 border-b border-border/40 bg-background/80 backdrop-blur-xl">
+        <header className="flex items-center gap-4 px-6 py-4 border-b border-border/40 bg-background/60 backdrop-blur-xl">
           {/* Sidebar toggle */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -360,8 +392,16 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* User profile — top right */}
+          {/* Background upload + User profile — top right */}
           <div className="ml-auto flex items-center gap-3">
+            <input ref={bgInputRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
+            <button
+              onClick={() => bgImage ? removeBg() : bgInputRef.current?.click()}
+              className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+              title={bgImage ? "Remove background photo" : "Upload background photo"}
+            >
+              {bgImage ? <Trash2 className="h-4 w-4" /> : <ImagePlus className="h-4 w-4" />}
+            </button>
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold truncate max-w-[140px]">
                 {user?.name ?? user?.email?.split("@")[0] ?? "Guest"}
@@ -384,7 +424,7 @@ export default function Dashboard() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 pb-28">
+        <div className={cn("flex-1 overflow-y-auto p-6 pb-28", bgImage && "")}>
           <AnimatePresence mode="wait">
             {/* HOME */}
             {view === "home" && (

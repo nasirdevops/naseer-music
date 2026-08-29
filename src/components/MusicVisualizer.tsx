@@ -179,7 +179,7 @@ export function MusicVisualizer() {
     <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
 
       {/* ══════ MAIN DIGITAL EQUALIZER — Large Center ══════ */}
-      <div className="absolute bottom-20 left-0 right-0 flex items-end justify-center gap-[2px] px-4 h-72 sm:h-80 md:h-96 opacity-60">
+      <div className="absolute bottom-16 sm:bottom-20 left-0 right-0 flex items-end justify-center gap-[1px] sm:gap-[2px] px-2 sm:px-4 h-48 sm:h-72 md:h-96 opacity-50 sm:opacity-60">
         {eqBars.map((value, i) => {
           const maxH = 340;
           const height = 6 + value * maxH;
@@ -200,7 +200,7 @@ export function MusicVisualizer() {
               )}
               {/* Bar */}
               <div
-                className="w-full rounded-t-[3px] transition-all duration-75"
+                className="w-full rounded-t-[2px] sm:rounded-t-[3px] transition-all duration-75"
                 style={{
                   height: `${height}px`,
                   background: `linear-gradient(to top, ${color}ff, ${color}bb, ${color}55)`,
@@ -213,7 +213,7 @@ export function MusicVisualizer() {
       </div>
 
       {/* ══════ REFLECTION — Mirror below main EQ ══════ */}
-      <div className="absolute bottom-20 left-0 right-0 flex items-start justify-center gap-[2px] px-4 h-20 opacity-15 rotate-180">
+      <div className="absolute bottom-16 sm:bottom-20 left-0 right-0 flex items-start justify-center gap-[1px] sm:gap-[2px] px-2 sm:px-4 h-10 sm:h-20 opacity-10 sm:opacity-15 rotate-180">
         {eqBars.map((value, i) => {
           const height = 4 + value * 80;
           const color = getBarColor(i, value);
@@ -232,7 +232,7 @@ export function MusicVisualizer() {
 
       {/* ══════ SIDE EQUALIZERS ══════ */}
       {/* Left side */}
-      <div className="absolute bottom-24 left-2 flex flex-col items-center gap-[2px] h-48 opacity-30">
+      <div className="absolute bottom-20 sm:bottom-24 left-1 sm:left-2 flex flex-col items-center gap-[2px] h-32 sm:h-48 opacity-20 sm:opacity-30 hidden sm:flex">
         {eqBars.slice(0, 16).map((value, i) => {
           const height = 4 + value * 160;
           const color = getBarColor(i, value);
@@ -249,7 +249,7 @@ export function MusicVisualizer() {
         })}
       </div>
       {/* Right side */}
-      <div className="absolute bottom-24 right-2 flex flex-col items-center gap-[2px] h-48 opacity-30">
+      <div className="absolute bottom-20 sm:bottom-24 right-1 sm:right-2 flex flex-col items-center gap-[2px] h-32 sm:h-48 opacity-20 sm:opacity-30 hidden sm:flex">
         {eqBars.slice(32, 48).map((value, i) => {
           const height = 4 + value * 160;
           const color = getBarColor(i + 32, value);
@@ -267,7 +267,7 @@ export function MusicVisualizer() {
       </div>
 
       {/* ══════ DIGITAL WAVE LINE — Top ══════ */}
-      <svg className="absolute top-0 left-0 right-0 h-16 opacity-20" viewBox="0 0 1200 60" preserveAspectRatio="none">
+      <svg className="absolute top-0 left-0 right-0 h-10 sm:h-16 opacity-15 sm:opacity-20" viewBox="0 0 1200 60" preserveAspectRatio="none">
         <defs>
           <linearGradient id="wave-grad" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#22c55e" />
@@ -313,7 +313,7 @@ export function MusicVisualizer() {
       </svg>
 
       {/* ══════ DIGITAL WAVE LINE — Bottom ══════ */}
-      <svg className="absolute bottom-20 left-0 right-0 h-12 opacity-15" viewBox="0 0 1200 48" preserveAspectRatio="none">
+      <svg className="absolute bottom-16 sm:bottom-20 left-0 right-0 h-8 sm:h-12 opacity-10 sm:opacity-15" viewBox="0 0 1200 48" preserveAspectRatio="none">
         <defs>
           <linearGradient id="wave-grad2" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#a855f7" />

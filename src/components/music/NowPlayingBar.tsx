@@ -5,6 +5,7 @@ import {
   SkipForward,
   Volume2,
   VolumeX,
+  X,
   Music,
 } from "lucide-react";
 import { useMusic } from "@/lib/music-context";
@@ -22,6 +23,7 @@ export function NowPlayingBar() {
     prevTrack,
     seekTo,
     setVolume,
+    stopPlayback,
   } = useMusic();
 
   if (!currentTrack) return null;
@@ -107,8 +109,8 @@ export function NowPlayingBar() {
           </div>
         </div>
 
-        {/* Volume */}
-        <div className="hidden md:flex items-center gap-2 w-36 shrink-0">
+        {/* Volume + Close */}
+        <div className="hidden md:flex items-center gap-2 w-44 shrink-0">
           <button
             onClick={() => setVolume(volume > 0 ? 0 : 0.8)}
             className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
@@ -136,6 +138,13 @@ export function NowPlayingBar() {
               className="absolute inset-0 w-full opacity-0 cursor-pointer"
             />
           </div>
+          <button
+            onClick={stopPlayback}
+            className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors ml-1"
+            title="Stop & close player"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>

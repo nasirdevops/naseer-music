@@ -1,6 +1,19 @@
 import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { Infer, v } from "convex/values";
+
+export const ROLES = {
+  ADMIN: "admin",
+  USER: "user",
+  MEMBER: "member",
+} as const;
+
+export const roleValidator = v.union(
+  v.literal(ROLES.ADMIN),
+  v.literal(ROLES.USER),
+  v.literal(ROLES.MEMBER),
+);
+export type Role = Infer<typeof roleValidator>;
 
 const schema = defineSchema(
   {
@@ -12,48 +25,41 @@ const schema = defineSchema(
       email: v.optional(v.string()),
       emailVerificationTime: v.optional(v.number()),
       isAnonymous: v.optional(v.boolean()),
-      status: v.optional(v.union(v.literal("online"), v.literal("offline"), v.literal("away"))),
-      statusText: v.optional(v.string()),
-      lastSeen: v.optional(v.number()),
+      role: v.optional(roleValidator),
     }).index("email", ["email"]),
 
-    conversations: defineTable({
-      type: v.union(v.literal("dm"), v.literal("group"), v.literal("omegle")),
-      name: v.optional(v.string()),
+    playlists: defineTable({
+      userId: v.string(),
+      name: v.string(),
+      description: v.optional(v.string()),
       image: v.optional(v.string()),
-      createdBy: v.string(),
+      trackIds: v.string(),
       createdAt: v.number(),
-      lastMessageAt: v.number(),
-    }).index("by_type", ["type"])
-      .index("by_last_message", ["lastMessageAt"]),
-
-    conversationMembers: defineTable({
-      conversationId: v.id("conversations"),
-      userId: v.string(),
-      role: v.union(v.literal("admin"), v.literal("member")),
-      joinedAt: v.number(),
-    }).index("by_conversation", ["conversationId"])
-      .index("by_user", ["userId"])
-      .index("by_conv_user", ["conversationId", "userId"]),
-
-    messages: defineTable({
-      conversationId: v.id("conversations"),
-      senderId: v.string(),
-      senderName: v.string(),
-      content: v.string(),
-      type: v.union(v.literal("text"), v.literal("image"), v.literal("system")),
-      imageUrl: v.optional(v.string()),
-      replyTo: v.optional(v.id("messages")),
-      createdAt: v.number(),
-    }).index("by_conversation", ["conversationId", "createdAt"])
-      .index("by_sender", ["senderId"]),
-
-    omegleQueue: defineTable({
-      userId: v.string(),
-      userName: v.string(),
-      userImage: v.optional(v.string()),
-      queuedAt: v.number(),
     }).index("by_user", ["userId"]),
+
+    likedSongs: defineTable({
+      userId: v.string(),
+      trackId: v.number(),
+      title: v.string(),
+      artist: v.string(),
+      album: v.string(),
+      albumCover: v.string(),
+      preview: v.string(),
+      duration: v.number(),
+      likedAt: v.number(),
+    }).index("by_user", ["userId"]).index("by_user_track", ["userId", "trackId"]),
+
+    recentlyPlayed: defineTable({
+      userId: v.string(),
+      trackId: v.number(),
+      title: v.string(),
+      artist: v.string(),
+      album: v.string(),
+      albumCover: v.string(),
+      preview: v.string(),
+      duration: v.number(),
+      playedAt: v.number(),
+    }).index("by_user", ["userId"]).index("by_user_time", ["userId", "playedAt"]),
   },
   {
     schemaValidation: false,

@@ -1,796 +1,759 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Home,
+  MessageCircle,
+  Radio,
+  Users,
   Search,
-  Library,
-  Heart,
-  Clock,
-  Plus,
-  LogOut,
-  Music,
+  Send,
+  Image,
   X,
+  LogOut,
+  Plus,
   Loader2,
-  ChevronLeft,
-  Disc3,
-  ImagePlus,
-  Trash2,
+  ArrowLeft,
+  Smile,
+  Hash,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
-import { useMusic, type Track } from "@/lib/music-context";
-import { TrackRow } from "@/components/music/TrackRow";
-import { NowPlayingBar } from "@/components/music/NowPlayingBar";
-import { MusicVisualizer } from "@/components/MusicVisualizer";
 import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
-type View = "home" | "search" | "library";
-
-type SaavnAlbum = {
-  id: string;
-  title: string;
-  image: string;
-  language: string;
-  artist: string;
-};
-
-const LANGUAGES = [
-  "telugu",
-  "hindi",
-  "tamil",
-  "kannada",
-  "malayalam",
-  "punjabi",
-  "bengali",
-  "marathi",
-];
-
-function isLanguageQuery(q: string): boolean {
-  const lower = q.toLowerCase().trim();
-  return (
-    LANGUAGES.includes(lower) ||
-    lower.endsWith(" songs") ||
-    lower.endsWith(" albums") ||
-    lower.endsWith(" hits")
-  );
-}
-
-const GENRE_COLORS: Record<string, string> = {
-  Bollywood: "linear-gradient(135deg, #f5af19, #f12711)",
-  "Hindi Songs": "linear-gradient(135deg, #e44d26, #ff6b35)",
-  "Telugu Songs": "linear-gradient(135deg, #ff6f61, #de4313)",
-  "Tamil Songs": "linear-gradient(135deg, #f7971e, #ffd200)",
-  "Kannada Songs": "linear-gradient(135deg, #667eea, #764ba2)",
-  "Punjabi Songs": "linear-gradient(135deg, #f093fb, #f5576c)",
-  "Malayalam Songs": "linear-gradient(135deg, #134e5e, #71b280)",
-  "English Pop": "linear-gradient(135deg, #4facfe, #00f2fe)",
-  "Hip-Hop": "linear-gradient(135deg, #a18cd1, #fbc2eb)",
-  "K-Pop": "linear-gradient(135deg, #e91e63, #9c27b0)",
-  Rock: "linear-gradient(135deg, #fa709a, #fee140)",
-  Classical: "linear-gradient(135deg, #fccb90, #d57eeb)",
-};
+type View = "chats" | "omegle" | "people";
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [view, setView] = useState<View>("home");
+  const [view, setView] = useState<View>("chats");
+  const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
+  const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Track[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [trendingTracks, setTrendingTracks] = useState<Track[]>([]);
-  const [isLoadingTrending, setIsLoadingTrending] = useState(true);
-  const { playTrack, playQueue, currentTrack, isPlaying } = useMusic();
+  const [isOmegleSearching, setIsOmegleSearching] = useState(false);
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [showGroupCreate, setShowGroupCreate] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Logo toggle
-  const [brandName, setBrandName] = useState<"SONA" | "NAYA">("SONA");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  // Background photo
-  const [bgImage, setBgImage] = useState<string | null>(() => {
-    try { return localStorage.getItem("sona_bg_image"); } catch { return null; }
-  });
-  const bgInputRef = useRef<HTMLInputElement>(null);
-
-  // Album search
-  const [albumResults, setAlbumResults] = useState<SaavnAlbum[]>([]);
-  const [isSearchingAlbums, setIsSearchingAlbums] = useState(false);
-  const [selectedAlbum, setSelectedAlbum] = useState<SaavnAlbum | null>(null);
-  const [albumSongs, setAlbumSongs] = useState<Track[]>([]);
-  const [isLoadingAlbum, setIsLoadingAlbum] = useState(false);
-
-  const searchSmart = useAction(api.music.searchSmart);
-  const searchSaavnAlbums = useAction(api.music.searchSaavnAlbums);
-  const getSaavnAlbumSongs = useAction(api.music.getSaavnAlbumSongs);
-  const recentlyPlayed = useQuery(api.userMusic.getRecentlyPlayed);
-  const likedSongs = useQuery(api.userMusic.getLikedSongs);
-  const playlists = useQuery(api.userMusic.getPlaylists);
-  const createPlaylist = useMutation(api.userMusic.createPlaylist);
-
-  // Load trending on mount
-  useEffect(() => {
-    const loadTrending = async () => {
-      try {
-        setIsLoadingTrending(true);
-        const [topHits, bollywood, hindi, telugu] = await Promise.allSettled([
-          searchSmart({ query: "top hits 2024", limit: 15 }),
-          searchSmart({ query: "bollywood songs", limit: 10 }),
-          searchSmart({ query: "hindi songs hits", limit: 10 }),
-          searchSmart({ query: "telugu songs hits", limit: 10 }),
-        ]);
-        const allTracks: Track[] = [];
-        if (topHits.status === "fulfilled") allTracks.push(...topHits.value);
-        if (bollywood.status === "fulfilled") allTracks.push(...bollywood.value);
-        if (hindi.status === "fulfilled") allTracks.push(...hindi.value);
-        if (telugu.status === "fulfilled") allTracks.push(...telugu.value);
-        setTrendingTracks(allTracks);
-      } catch (e) {
-        console.error("Failed to load trending:", e);
-      } finally {
-        setIsLoadingTrending(false);
-      }
-    };
-    loadTrending();
-  }, [searchSmart]);
-
-  // Search handler
-  const handleSearch = useCallback(
-    async (q: string) => {
-      if (!q.trim()) {
-        setSearchResults([]);
-        setAlbumResults([]);
-        return;
-      }
-      setIsSearching(true);
-      setIsSearchingAlbums(true);
-      setSelectedAlbum(null);
-      setAlbumSongs([]);
-      try {
-        if (isLanguageQuery(q)) {
-          const albums = await searchSaavnAlbums({ query: q, limit: 20 });
-          setAlbumResults(albums as SaavnAlbum[]);
-          setSearchResults([]);
-        } else {
-          const data = await searchSmart({ query: q, limit: 40 });
-          setSearchResults(data as Track[]);
-          setAlbumResults([]);
-        }
-      } catch (e) {
-        console.error("Search failed:", e);
-      } finally {
-        setIsSearching(false);
-        setIsSearchingAlbums(false);
-      }
-    },
-    [searchSmart, searchSaavnAlbums]
+  const me = useQuery(api.chat.getMe);
+  const conversations = useQuery(api.chat.getMyConversations);
+  const messages = useQuery(
+    api.chat.getMessages,
+    selectedConvId ? { conversationId: selectedConvId as any } : "skip"
+  );
+  const searchResults = useQuery(
+    api.chat.searchUsers,
+    searchQuery ? { query: searchQuery } : "skip"
   );
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery) handleSearch(searchQuery);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchQuery, handleSearch]);
+  const sendMessage = useMutation(api.chat.sendMessage);
+  const updateStatus = useMutation(api.chat.updateStatus);
+  const createDM = useMutation(api.chat.createDM);
+  const createGroup = useMutation(api.chat.createGroup);
+  const joinQueue = useMutation(api.chat.joinOmegleQueue);
+  const matchOmegle = useMutation(api.chat.matchOmegle);
+  const leaveQueue = useMutation(api.chat.leaveOmegleQueue);
 
-  // Click album → load songs
-  const handleAlbumClick = useCallback(
-    async (album: SaavnAlbum) => {
-      setSelectedAlbum(album);
-      setIsLoadingAlbum(true);
-      setAlbumSongs([]);
-      try {
-        const songs = await getSaavnAlbumSongs({
-          albumId: album.id,
-          albumName: album.title,
-        });
-        setAlbumSongs(songs as Track[]);
-      } catch (e) {
-        console.error("Failed to load album:", e);
-      } finally {
-        setIsLoadingAlbum(false);
+  // Set user online
+  useEffect(() => {
+    if (me) {
+      updateStatus({ status: "online" });
+      const interval = setInterval(() => updateStatus({ status: "online" }), 30000);
+      return () => {
+        updateStatus({ status: "offline" });
+        clearInterval(interval);
+      };
+    }
+  }, [me, updateStatus]);
+
+  // Auto-scroll messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = useCallback(async () => {
+    if (!messageInput.trim() || !selectedConvId) return;
+    const content = messageInput.trim();
+    setMessageInput("");
+    await sendMessage({
+      conversationId: selectedConvId as any,
+      content,
+      type: "text",
+    });
+  }, [messageInput, selectedConvId, sendMessage]);
+
+  const handleOmegleStart = useCallback(async () => {
+    setIsOmegleSearching(true);
+    await joinQueue();
+    // Wait a bit then try to match
+    setTimeout(async () => {
+      const result = await matchOmegle();
+      if (result) {
+        setSelectedConvId(result.conversationId);
+        setView("chats");
+        setIsOmegleSearching(false);
+      } else {
+        setIsOmegleSearching(false);
+        alert("No one else is in the queue right now. Try again later!");
+        await leaveQueue();
       }
+    }, 2000);
+  }, [joinQueue, matchOmegle, leaveQueue]);
+
+  const handleStartDM = useCallback(
+    async (userId: string) => {
+      const convId = await createDM({ otherUserId: userId });
+      setSelectedConvId(convId);
+      setShowNewChat(false);
+      setView("chats");
     },
-    [getSaavnAlbumSongs]
+    [createDM]
   );
 
-  const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      setBgImage(dataUrl);
-      try { localStorage.setItem("sona_bg_image", dataUrl); } catch { /* quota */ }
-    };
-    reader.readAsDataURL(file);
-  };
+  const handleCreateGroup = useCallback(async () => {
+    if (!groupName.trim() || selectedMembers.length === 0) return;
+    const convId = await createGroup({
+      name: groupName,
+      memberIds: selectedMembers,
+    });
+    setSelectedConvId(convId);
+    setShowGroupCreate(false);
+    setGroupName("");
+    setSelectedMembers([]);
+    setView("chats");
+  }, [groupName, selectedMembers, createGroup]);
 
-  const removeBg = () => {
-    setBgImage(null);
-    try { localStorage.removeItem("sona_bg_image"); } catch { /* ignore */ }
-  };
+  const selectedConv = conversations?.find(
+    (c) => c._id === selectedConvId
+  );
 
   const handleSignOut = async () => {
+    await updateStatus({ status: "offline" });
     await signOut();
     navigate("/");
   };
 
-  const handleCreatePlaylist = async () => {
-    const name = prompt("Playlist name:");
-    if (name) await createPlaylist({ name });
-  };
-
-  const uniqueArtists = trendingTracks
-    .filter((t, i, arr) => arr.findIndex((a) => a.artist === t.artist) === i)
-    .slice(0, 6);
-
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden relative">
-      {/* Custom background image */}
-      {bgImage && (
-        <div className="fixed inset-0 z-0">
-          <img src={bgImage} alt="" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-black/60" />
-        </div>
-      )}
+    <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
-      <aside className={cn("hidden lg:flex w-64 shrink-0 flex-col border-r border-border/60 bg-background/80 backdrop-blur-xl transition-all duration-300 relative z-10", !sidebarOpen && "w-0 overflow-hidden border-0")}>
-        {/* Logo — toggles SONA ↔ Naya */}
-        <div
-          className="p-5 flex items-center gap-2 cursor-pointer select-none"
-          onClick={() =>
-            setBrandName((prev) => (prev === "SONA" ? "NAYA" : "SONA"))
-          }
-        >
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Music className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="text-base font-bold">
-            {brandName} <span className="text-primary">Music</span>
-          </span>
-        </div>
-
-        <nav className="flex-1 px-3 space-y-1">
-          {(
-            [
-              { id: "home" as View, icon: Home, label: "Home" },
-              { id: "search" as View, icon: Search, label: "Search" },
-              { id: "library" as View, icon: Library, label: "Your Library" },
-            ] as const
-          ).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setView(item.id);
-                setSelectedAlbum(null);
-                setAlbumSongs([]);
-              }}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                view === item.id
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.label}
-            </button>
-          ))}
-
-          <div className="pt-4 pb-2 px-3">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Playlists
-            </h4>
-          </div>
-          {playlists?.map((pl) => (
-            <button
-              key={pl._id}
-              onClick={() => setView("library")}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-            >
-              <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
-                <Music className="h-3.5 w-3.5" />
+      <aside
+        className={cn(
+          "flex flex-col border-r border-border/60 bg-sidebar transition-all duration-300 z-20",
+          selectedConvId ? "hidden lg:flex w-80" : "flex w-full lg:w-80"
+        )}
+      >
+        {/* Sidebar header */}
+        <div className="p-4 border-b border-border/40">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <Radio className="h-4 w-4 text-primary" />
               </div>
-              <span className="truncate">{pl.name}</span>
-            </button>
-          ))}
-          <button
-            onClick={handleCreatePlaylist}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-          >
-            <div className="h-8 w-8 rounded border border-dashed border-border flex items-center justify-center">
-              <Plus className="h-3.5 w-3.5" />
+              <span className="text-lg font-bold">
+                Pulse<span className="text-primary">.</span>
+              </span>
             </div>
-            <span>Create Playlist</span>
-          </button>
-        </nav>
-      </aside>
-
-      {/* Main content */}
-      <main className="flex-1 flex flex-col overflow-hidden relative z-10">
-        {/* Top bar */}
-        <header className="flex items-center gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 border-b border-border/40 bg-background/60 backdrop-blur-xl">
-          {/* Sidebar toggle */}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hidden lg:flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-          >
-            {sidebarOpen ? (
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
-            ) : (
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-            )}
-          </button>
-          <div className="flex lg:hidden items-center gap-1 sm:gap-2">
-            {(
-              [
-                { id: "home" as View, icon: Home },
-                { id: "search" as View, icon: Search },
-                { id: "library" as View, icon: Library },
-              ] as const
-            ).map((item) => (
+            <div className="flex items-center gap-1">
               <button
-                key={item.id}
-                onClick={() => {
-                  setView(item.id);
-                  setSelectedAlbum(null);
-                }}
+                onClick={() => setShowNewChat(true)}
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                title="New chat"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Nav tabs */}
+          <div className="flex gap-1 bg-muted/50 rounded-xl p-1">
+            {([
+              { id: "chats" as View, icon: MessageCircle, label: "Chats" },
+              { id: "omegle" as View, icon: Radio, label: "Pulse Match" },
+              { id: "people" as View, icon: Users, label: "People" },
+            ]).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setView(tab.id)}
                 className={cn(
-                  "h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-lg transition-colors",
-                  view === item.id
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground"
+                  "flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition-colors",
+                  view === tab.id
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <item.icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <tab.icon className="h-3.5 w-3.5" />
+                {tab.label}
               </button>
             ))}
           </div>
+        </div>
 
-          {view === "search" && (
-            <div className="relative flex-1 max-w-xl min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search songs, albums..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setSelectedAlbum(null);
-                  setAlbumSongs([]);
-                }}
-                className="w-full h-9 sm:h-10 pl-9 pr-9 rounded-full bg-white/5 border border-border/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-              {searchQuery && (
+        {/* Content area */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Chats list */}
+          {view === "chats" && (
+            <div className="p-2 space-y-0.5">
+              {conversations?.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <MessageCircle className="h-10 w-10 mb-3 opacity-30" />
+                  <p className="text-sm">No conversations yet</p>
+                  <p className="text-xs mt-1">Start a chat or try Pulse Match</p>
+                </div>
+              )}
+              {conversations?.map((conv) => {
+                const other = conv.members?.find(
+                  (m) => m.userId !== me?._id
+                );
+                const name =
+                  conv.type === "group"
+                    ? conv.name
+                    : other?.name ?? "Unknown";
+                const isOnline = other?.status === "online";
+
+                return (
+                  <button
+                    key={conv._id}
+                    onClick={() => setSelectedConvId(conv._id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 rounded-xl p-3 transition-colors text-left",
+                      selectedConvId === conv._id
+                        ? "bg-primary/10"
+                        : "hover:bg-white/5"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 relative",
+                        conv.type === "group"
+                          ? "bg-chart-2/20 text-chart-2"
+                          : "bg-primary/20 text-primary"
+                      )}
+                    >
+                      {conv.type === "group" ? (
+                        <Users className="h-4 w-4" />
+                      ) : other?.image ? (
+                        <img
+                          src={other.image}
+                          alt=""
+                          className="h-full w-full rounded-full object-cover"
+                        />
+                      ) : (
+                        (name ?? "?").charAt(0).toUpperCase()
+                      )}
+                      {conv.type === "dm" && (
+                        <div
+                          className={cn(
+                            "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-sidebar",
+                            isOnline ? "bg-green-500" : "bg-gray-500"
+                          )}
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium truncate">{name}</p>
+                        {conv.lastMessage && (
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {new Date(conv.lastMessage.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        )}
+                      </div>
+                      {conv.lastMessage && (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {conv.lastMessage.senderName}:{" "}
+                          {conv.lastMessage.content}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Omegle */}
+          {view === "omegle" && (
+            <div className="flex flex-col items-center justify-center p-8 text-center">
+              <div className="relative mb-8">
+                <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Radio className="h-10 w-10 text-primary" />
+                </div>
+                {isOmegleSearching && (
+                  <>
+                    <div className="absolute inset-0 rounded-full border-2 border-primary/40 animate-ping" />
+                    <div
+                      className="absolute inset-0 rounded-full border-2 border-primary/20 animate-ping"
+                      style={{ animationDelay: "0.5s" }}
+                    />
+                  </>
+                )}
+              </div>
+
+              <h3 className="text-xl font-bold mb-2">Pulse Match</h3>
+              <p className="text-sm text-muted-foreground mb-8 max-w-xs">
+                {isOmegleSearching
+                  ? "Looking for someone to chat with..."
+                  : "Click below to connect with a random stranger instantly."}
+              </p>
+
+              {isOmegleSearching ? (
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                  <button
+                    onClick={async () => {
+                      setIsOmegleSearching(false);
+                      await leaveQueue();
+                    }}
+                    className="px-6 py-2.5 rounded-full bg-destructive/10 text-destructive text-sm font-medium hover:bg-destructive/20 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
                 <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSearchResults([]);
-                    setAlbumResults([]);
-                    setSelectedAlbum(null);
-                    setAlbumSongs([]);
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={handleOmegleStart}
+                  className="px-8 py-3.5 rounded-full bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25 animate-pulse-glow"
                 >
-                  <X className="h-4 w-4" />
+                  Start Matching
                 </button>
               )}
             </div>
           )}
 
-          {view === "home" && (
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold">
-                Good {getTimeGreeting()}, {user?.name?.split(" ")[0] ?? "there"}
-              </h2>
-            </div>
-          )}
+          {/* People / Search */}
+          {view === "people" && (
+            <div className="p-3">
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search people..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-9 pl-9 pr-4 rounded-full bg-muted text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
 
-          {view === "library" && (
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold">Your Library</h2>
-            </div>
-          )}
-
-          {/* Background upload + User profile — top right */}
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
-            <input ref={bgInputRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
-            <button
-              onClick={() => bgImage ? removeBg() : bgInputRef.current?.click()}
-              className="h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-              title={bgImage ? "Remove background photo" : "Upload background photo"}
-            >
-              {bgImage ? <Trash2 className="h-4 w-4" /> : <ImagePlus className="h-4 w-4" />}
-            </button>
-            <div className="text-right hidden md:block">
-              <p className="text-sm font-semibold truncate max-w-[140px]">
-                {user?.name ?? user?.email?.split("@")[0] ?? "Guest"}
-              </p>
-              <p className="text-xs text-muted-foreground truncate max-w-[140px]">
-                {user?.email ?? ""}
-              </p>
-            </div>
-            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-              {(user?.name ?? user?.email ?? "G").charAt(0).toUpperCase()}
-            </div>
-            <button
-              onClick={handleSignOut}
-              className="h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
-        </header>
-
-        {/* Content */}
-        <div className={cn("flex-1 overflow-y-auto p-4 sm:p-6 pb-28", bgImage && "")}>
-          <AnimatePresence mode="wait">
-            {/* HOME */}
-            {view === "home" && (
-              <motion.div
-                key="home"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-10"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <button
-                    onClick={() => setView("search")}
-                    className="flex items-center gap-3 rounded-xl bg-primary/10 border border-primary/20 p-4 hover:bg-primary/15 transition-colors text-left"
-                  >
-                    <Search className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-semibold">Search Music</span>
-                  </button>
-                  <button
-                    onClick={() => setView("library")}
-                    className="flex items-center gap-3 rounded-xl bg-white/5 border border-border/60 p-4 hover:bg-white/8 transition-colors text-left"
-                  >
-                    <Heart className="h-5 w-5 text-chart-2" />
-                    <span className="text-sm font-semibold">Liked Songs</span>
-                  </button>
-                  <button
-                    onClick={() => setView("library")}
-                    className="flex items-center gap-3 rounded-xl bg-white/5 border border-border/60 p-4 hover:bg-white/8 transition-colors text-left"
-                  >
-                    <Clock className="h-5 w-5 text-chart-3" />
-                    <span className="text-sm font-semibold">
-                      Recently Played
-                    </span>
-                  </button>
-                </div>
-
-                {recentlyPlayed && recentlyPlayed.length > 0 && (
-                  <section>
-                    <h3 className="text-xl font-bold mb-4">Recently Played</h3>
-                    <div className="space-y-1">
-                      {recentlyPlayed.slice(0, 5).map((item) => (
-                        <TrackRow
-                          key={item._id}
-                          track={{
-                            id: item.trackId,
-                            title: item.title,
-                            artist: item.artist,
-                            album: item.album,
-                            albumCover: item.albumCover,
-                            preview: item.preview,
-                            duration: item.duration,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                <section>
-                  <h3 className="text-xl font-bold mb-4">🇮🇳 Indian Music</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {[
-                      { label: "Bollywood Hits", q: "hindi albums", color: "from-orange-500 to-red-500" },
-                      { label: "Hindi Pop", q: "hindi songs", color: "from-pink-500 to-rose-500" },
-                      { label: "Telugu Hits", q: "telugu albums", color: "from-amber-500 to-orange-600" },
-                      { label: "Tamil Hits", q: "tamil albums", color: "from-yellow-500 to-amber-600" },
-                      { label: "Kannada Songs", q: "kannada albums", color: "from-purple-500 to-indigo-500" },
-                      { label: "Punjabi Beats", q: "punjabi albums", color: "from-fuchsia-500 to-pink-500" },
-                      { label: "AR Rahman Best", q: "AR Rahman songs", color: "from-cyan-500 to-blue-500" },
-                      { label: "Arijit Singh", q: "Arijit Singh songs", color: "from-teal-500 to-emerald-500" },
-                    ].map((item) => (
-                      <motion.div
-                        key={item.label}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => {
-                          setSearchQuery(item.q);
-                          setView("search");
-                        }}
-                        className={`cursor-pointer rounded-xl bg-gradient-to-br ${item.color} p-4 text-sm font-bold text-white shadow-lg hover:shadow-xl transition-shadow`}
-                      >
-                        {item.label}
-                      </motion.div>
-                    ))}
-                  </div>
-                </section>
-
-                <section>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold">Trending Now</h3>
+              {searchResults && searchResults.length > 0 && (
+                <div className="space-y-0.5">
+                  {searchResults.map((u) => (
                     <button
-                      onClick={() => trendingTracks.length > 0 && playQueue(trendingTracks)}
-                      className="text-sm text-primary hover:text-primary/80 font-medium"
+                      key={u.userId}
+                      onClick={() => handleStartDM(u.userId)}
+                      className="w-full flex items-center gap-3 rounded-xl p-3 hover:bg-white/5 transition-colors text-left"
                     >
-                      Play All
-                    </button>
-                  </div>
-                  {isLoadingTrending ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {trendingTracks.slice(0, 10).map((track, i) => (
-                        <TrackRow key={track.id} track={track} index={i} queue={trendingTracks} />
-                      ))}
-                    </div>
-                  )}
-                </section>
-
-                {uniqueArtists.length > 0 && (
-                  <section>
-                    <h3 className="text-xl font-bold mb-4">Featured Artists</h3>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
-                      {uniqueArtists.map((track) => (
-                        <motion.div
-                          key={track.artist}
-                          whileHover={{ scale: 1.05 }}
-                          className="text-center cursor-pointer"
-                          onClick={() => { setSearchQuery(track.artist); setView("search"); }}
-                        >
-                          <div className="aspect-square rounded-full overflow-hidden bg-gradient-to-br from-primary/30 to-chart-2/30 border-2 border-transparent hover:border-primary transition-colors mb-2">
-                            {track.albumCover ? (
-                              <img src={track.albumCover} alt={track.artist} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full items-center justify-center">
-                                <Music className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-xs font-medium truncate">{track.artist}</p>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                <section>
-                  <h3 className="text-xl font-bold mb-4">Browse Genres</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {Object.entries(GENRE_COLORS).map(([name, color]) => (
-                      <motion.div
-                        key={name}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => { setSearchQuery(name); setView("search"); }}
-                        className="cursor-pointer rounded-xl p-4 text-sm font-bold text-white shadow-lg hover:shadow-xl transition-shadow"
-                        style={{ background: color }}
-                      >
-                        {name}
-                      </motion.div>
-                    ))}
-                  </div>
-                </section>
-              </motion.div>
-            )}
-
-            {/* SEARCH */}
-            {view === "search" && (
-              <motion.div
-                key="search"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-6"
-              >
-                {selectedAlbum ? (
-                  /* Album Detail */
-                  <div className="space-y-6">
-                    <button
-                      onClick={() => { setSelectedAlbum(null); setAlbumSongs([]); }}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Back to albums
-                    </button>
-                    <div className="flex items-end gap-3 sm:gap-5">
-                      <div className="h-28 w-28 sm:h-40 sm:w-40 shrink-0 rounded-xl overflow-hidden shadow-2xl bg-muted">
-                        {selectedAlbum.image ? (
-                          <img src={selectedAlbum.image} alt={selectedAlbum.title} className="h-full w-full object-cover" />
+                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary shrink-0 relative">
+                        {u.image ? (
+                          <img
+                            src={u.image}
+                            alt=""
+                            className="h-full w-full rounded-full object-cover"
+                          />
                         ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <Disc3 className="h-12 w-12 text-muted-foreground" />
-                          </div>
+                          u.name.charAt(0).toUpperCase()
                         )}
+                        <div
+                          className={cn(
+                            "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background",
+                            u.status === "online"
+                              ? "bg-green-500"
+                              : "bg-gray-500"
+                          )}
+                        />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1">Album</p>
-                        <h2 className="text-xl sm:text-3xl font-bold truncate">{selectedAlbum.title}</h2>
-                        <p className="text-sm text-muted-foreground mt-1">{selectedAlbum.artist || selectedAlbum.language}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{albumSongs.length} songs</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{u.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {u.status}
+                        </p>
                       </div>
-                    </div>
-                    {albumSongs.length > 0 && (
-                      <button onClick={() => playQueue(albumSongs)} className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all">
-                        ▶ Play All
-                      </button>
-                    )}
-                    {isLoadingAlbum ? (
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        {albumSongs.map((track, i) => (
-                          <TrackRow key={track.id} track={track} index={i} queue={albumSongs} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : isSearching || isSearchingAlbums ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
-                ) : albumResults.length > 0 ? (
-                  /* Album Results Grid */
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">{albumResults.length} albums found</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                      {albumResults.map((album) => (
-                        <motion.div
-                          key={album.id}
-                          whileHover={{ scale: 1.03 }}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() => handleAlbumClick(album)}
-                          className="cursor-pointer rounded-xl bg-card/50 p-3 border border-border/40 hover:bg-card transition-colors"
-                        >
-                          <div className="aspect-square overflow-hidden rounded-lg bg-muted mb-3">
-                            {album.image ? (
-                              <img src={album.image} alt={album.title} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                                <Disc3 className="h-8 w-8 text-primary/40" />
-                              </div>
-                            )}
-                          </div>
-                          <h3 className="text-sm font-semibold truncate">{album.title}</h3>
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">{album.language || album.artist || "Album"}</p>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                ) : searchResults.length > 0 ? (
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground mb-3">{searchResults.length} results found</p>
-                    {searchResults.map((track, i) => (
-                      <TrackRow key={track.id} track={track} index={i} queue={searchResults} />
-                    ))}
-                  </div>
-                ) : searchQuery ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                    <Search className="h-12 w-12 mb-4 opacity-30" />
-                    <p className="text-lg font-medium">No results found</p>
-                    <p className="text-sm mt-1">Try a different search term</p>
-                  </div>
-                ) : (
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="text-lg font-bold mb-3">🇮🇳 Browse by Language</h3>
-                      <div className="flex flex-wrap gap-2 mb-6">
-                        {["Telugu Albums", "Hindi Albums", "Tamil Albums", "Kannada Albums", "Punjabi Albums", "Malayalam Albums", "Bengali Albums"].map((chip) => (
-                          <button key={chip} onClick={() => setSearchQuery(chip.toLowerCase())} className="px-4 py-2 rounded-full text-sm font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
-                            {chip}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold mb-3">🎤 Popular Artists</h3>
-                      <div className="flex flex-wrap gap-2 mb-6">
-                        {["Arijit Singh", "AR Rahman", "Pritam Songs", "SP Balasubrahmanyam", "Ilaiyaraaja", "Shreya Ghoshal", "Kishore Kumar", "Lata Mangeshkar"].map((chip) => (
-                          <button key={chip} onClick={() => setSearchQuery(chip)} className="px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-foreground/80 border border-border/60 hover:bg-white/10 transition-colors">
-                            {chip}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold mb-4">Browse All</h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {Object.entries(GENRE_COLORS).map(([name, color]) => (
-                          <motion.div key={name} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setSearchQuery(name)} className="cursor-pointer rounded-xl p-5 text-sm font-bold text-white shadow-lg hover:shadow-xl transition-shadow" style={{ background: color }}>
-                            {name}
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {/* LIBRARY */}
-            {view === "library" && (
-              <motion.div
-                key="library"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-8"
-              >
-                <section>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-chart-2 to-chart-4 flex items-center justify-center">
-                      <Heart className="h-5 w-5 text-white fill-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold">Liked Songs</h3>
-                      <p className="text-xs text-muted-foreground">{likedSongs?.length ?? 0} songs</p>
-                    </div>
-                  </div>
-                  {likedSongs && likedSongs.length > 0 ? (
-                    <div className="space-y-1">
-                      {likedSongs.map((song) => (
-                        <TrackRow key={song._id} track={{ id: song.trackId, title: song.title, artist: song.artist, album: song.album, albumCover: song.albumCover, preview: song.preview, duration: song.duration }} />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-4">No liked songs yet. Heart a song to add it here.</p>
-                  )}
-                </section>
-
-                <section>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold">Your Playlists</h3>
-                    <button onClick={handleCreatePlaylist} className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium">
-                      <Plus className="h-4 w-4" />
-                      New
                     </button>
-                  </div>
-                  {playlists && playlists.length > 0 ? (
-                    <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {playlists.map((pl) => (
-                        <div key={pl._id} className="rounded-xl border border-border/60 bg-card/50 p-4 hover:bg-card transition-colors">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Music className="h-5 w-5 text-primary" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-semibold truncate">{pl.name}</p>
-                              <p className="text-xs text-muted-foreground">{pl.trackIds ? JSON.parse(pl.trackIds).length : 0} songs</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-4">No playlists yet.</p>
-                  )}
-                </section>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  ))}
+                </div>
+              )}
+
+              {searchQuery && searchResults?.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No users found</p>
+                </div>
+              )}
+
+              {!searchQuery && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Search className="h-8 w-8 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Search for people to start chatting</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* User profile */}
+        <div className="p-3 border-t border-border/40">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+              {(me?.name ?? me?.email ?? "U").charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">
+                {me?.name ?? me?.email?.split("@")[0] ?? "Guest"}
+              </p>
+              <p className="text-[10px] text-green-500 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block" />
+                Online
+              </p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Chat area */}
+      <main
+        className={cn(
+          "flex-1 flex flex-col bg-background",
+          !selectedConvId && "hidden lg:flex"
+        )}
+      >
+        {selectedConvId && selectedConv ? (
+          <>
+            {/* Chat header */}
+            <div className="h-16 flex items-center gap-3 px-4 border-b border-border/40 bg-background/80 backdrop-blur-xl">
+              <button
+                onClick={() => setSelectedConvId(null)}
+                className="lg:hidden h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">
+                  {selectedConv.type === "group"
+                    ? selectedConv.name
+                    : selectedConv.members?.find(
+                        (m) => m.userId !== me?._id
+                      )?.name ?? "Unknown"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {selectedConv.members
+                    ?.map((m) => m.name)
+                    .join(", ")}
+                </p>
+              </div>
+              <div
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  selectedConv.members?.some(
+                    (m) => m.userId !== me?._id && m.status === "online"
+                  )
+                    ? "bg-green-500"
+                    : "bg-gray-500"
+                )}
+              />
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {messages?.map((msg) => {
+                const isMine = msg.senderId === me?._id;
+                const isSystem = msg.type === "system";
+
+                if (isSystem) {
+                  return (
+                    <div
+                      key={msg._id}
+                      className="flex justify-center"
+                    >
+                      <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                        {msg.content}
+                      </span>
+                    </div>
+                  );
+                }
+
+                return (
+                  <motion.div
+                    key={msg._id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={cn(
+                      "flex",
+                      isMine ? "justify-end" : "justify-start"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "max-w-[75%] px-4 py-2.5",
+                        isMine ? "bubble-sent" : "bubble-received"
+                      )}
+                    >
+                      {!isMine && selectedConv.type === "group" && (
+                        <p className="text-[10px] font-semibold text-primary mb-1">
+                          {msg.senderName}
+                        </p>
+                      )}
+                      {msg.type === "image" && msg.imageUrl && (
+                        <img
+                          src={msg.imageUrl}
+                          alt="Shared image"
+                          className="rounded-lg mb-2 max-w-full"
+                        />
+                      )}
+                      <p className="text-sm break-words">{msg.content}</p>
+                      <p
+                        className={cn(
+                          "text-[9px] mt-1 opacity-60",
+                          isMine
+                            ? "text-right"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {new Date(msg.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input */}
+            <div className="p-3 border-t border-border/40 bg-background/80 backdrop-blur-xl">
+              <div className="flex items-center gap-2">
+                <button className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
+                  <Image className="h-4 w-4" />
+                </button>
+                <button className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
+                  <Smile className="h-4 w-4" />
+                </button>
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  className="flex-1 h-10 px-4 rounded-full bg-muted text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!messageInput.trim()}
+                  className={cn(
+                    "h-10 w-10 flex items-center justify-center rounded-full transition-all",
+                    messageInput.trim()
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Empty state */
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+            <div className="relative mb-6">
+              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <Radio className="h-8 w-8 text-primary" />
+              </div>
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="absolute inset-0 rounded-full border border-primary/10"
+                  style={{
+                    animation: `pulse-ring 3s ease-out ${i * 1}s infinite`,
+                  }}
+                />
+              ))}
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Welcome to Pulse</h2>
+            <p className="text-muted-foreground max-w-sm mb-6">
+              Select a conversation from the sidebar or start a new one to begin
+              chatting.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowNewChat(true)}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all"
+              >
+                <Plus className="h-4 w-4" />
+                New Chat
+              </button>
+              <button
+                onClick={() => setView("omegle")}
+                className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-6 py-2.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-all"
+              >
+                <Radio className="h-4 w-4" />
+                Pulse Match
+              </button>
+            </div>
+          </div>
+        )}
       </main>
 
-      <MusicVisualizer />
-      <NowPlayingBar />
+      {/* New Chat Modal */}
+      <AnimatePresence>
+        {showNewChat && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+            onClick={() => {
+              setShowNewChat(false);
+              setShowGroupCreate(false);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-card rounded-2xl border border-border/60 shadow-2xl overflow-hidden"
+            >
+              <div className="p-4 border-b border-border/40 flex items-center justify-between">
+                <h3 className="font-semibold">
+                  {showGroupCreate ? "Create Group" : "New Conversation"}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowNewChat(false);
+                    setShowGroupCreate(false);
+                  }}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-muted-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="p-4">
+                {!showGroupCreate ? (
+                  <>
+                    <button
+                      onClick={() => setShowGroupCreate(true)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left mb-3"
+                    >
+                      <div className="h-10 w-10 rounded-full bg-chart-2/20 flex items-center justify-center">
+                        <Users className="h-4 w-4 text-chart-2" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Create Group</p>
+                        <p className="text-xs text-muted-foreground">
+                          Chat with multiple people
+                        </p>
+                      </div>
+                    </button>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
+                      Or message someone
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                      {searchResults?.map((u) => (
+                        <button
+                          key={u.userId}
+                          onClick={() => handleStartDM(u.userId)}
+                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors text-left"
+                        >
+                          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm">{u.name}</span>
+                        </button>
+                      ))}
+                      {!searchResults && (
+                        <input
+                          type="text"
+                          placeholder="Search for people..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full h-9 px-3 rounded-lg bg-muted text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          autoFocus
+                        />
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Group name..."
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                      className="w-full h-10 px-4 rounded-xl bg-muted text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      autoFocus
+                    />
+                    <input
+                      type="text"
+                      placeholder="Search people to add..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full h-9 px-3 rounded-lg bg-muted text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <div className="max-h-40 overflow-y-auto space-y-0.5">
+                      {searchResults?.map((u) => (
+                        <button
+                          key={u.userId}
+                          onClick={() => {
+                            setSelectedMembers((prev) =>
+                              prev.includes(u.userId)
+                                ? prev.filter((id) => id !== u.userId)
+                                : [...prev, u.userId]
+                            );
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left",
+                            selectedMembers.includes(u.userId)
+                              ? "bg-primary/10"
+                              : "hover:bg-white/5"
+                          )}
+                        >
+                          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm flex-1">{u.name}</span>
+                          {selectedMembers.includes(u.userId) && (
+                            <Hash className="h-4 w-4 text-primary" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleCreateGroup}
+                      disabled={!groupName.trim() || selectedMembers.length === 0}
+                      className={cn(
+                        "w-full h-10 rounded-xl text-sm font-semibold transition-all",
+                        groupName.trim() && selectedMembers.length > 0
+                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      Create Group ({selectedMembers.length} members)
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
-}
-
-function getTimeGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "morning";
-  if (h < 17) return "afternoon";
-  return "evening";
 }
